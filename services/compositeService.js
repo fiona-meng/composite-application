@@ -2,94 +2,78 @@ const express = require('express');
 const axios = require('axios');
 const router = express.Router();
 
-// Composite Service to Aggregate Appointment Information
+const APPOINTMENT_SERVICE_URL = 'http://localhost:3001/appointments';
+const SCHEDULE_SERVICE_URL = 'http://localhost:3002/schedules';
 
-// Get detailed appointment information for a student
-router.get('/appointments/details/:appointmentId', async (req, res) => {
-    const { appointmentId } = req.params;
-
+compositeRouter.get('/scheduleWithAppointments', async (req, res) => {
     try {
-        // Fetch appointment details
-        const appointmentResponse = await axios.get(`http://localhost:3000/appointments/${appointmentId}`);
-        const appointment = appointmentResponse.data[0];
+        const { sectionId } = req.query;
 
-        // Fetch schedule details for the appointment
-        const scheduleResponse = await axios.get(`http://localhost:3000/schedules/${appointment.schedule_id}`);
-        const schedule = scheduleResponse.data[0];
+        const scheduleResponse = await axios.get(`${SCHEDULE_SERVICE_URL}/sections/${sectionId}`);
+        const schedules = scheduleResponse.data;
 
-        // Fetch course details for the appointment
-        const courseResponse = await axios.get(`http://localhost:3000/courses/${schedule.course_id}`);
-        const course = courseResponse.data[0];
-
-        // Fetch course membership details for the student
-        const membershipResponse = await axios.get(`http://localhost:3000/course-memberships/users/${appointment.student_id}`);
-        const membership = membershipResponse.data;
-
-        // Combine all data into a single response
-        const detailedAppointment = {
-            appointment: {
-                id: appointment.id,
-                student_id: appointment.student_id,
-                schedule_id: appointment.schedule_id,
-                start_time: appointment.start_time,
-                end_time: appointment.end_time,
-            },
-            schedule: {
-                id: schedule.id,
-                professor_id: schedule.professor_id,
-                course_id: schedule.course_id,
-                start_time: schedule.start_time,
-                end_time: schedule.end_time,
-                location: schedule.location,
-            },
-            course: {
-                id: course.id,
-                course_code: course.course_code,
-                course_name: course.course_name,
-            },
-            membership: membership,
-        };
-
-        // Send the combined response
-        res.json(detailedAppointment);
-
-    } catch (err) {
-        console.error('Error fetching appointment details:', err.message);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Get a student's complete schedule with all appointment details
-router.get('/students/:studentId/schedule', async (req, res) => {
-    const { studentId } = req.params;
-
-    try {
-        // Fetch all appointments for the student
-        const appointmentsResponse = await axios.get(`http://localhost:3000/appointments/students/${studentId}`);
+        const appointmentsResponse = await axios.get(`${APPOINTMENT_SERVICE_URL}/schedules/${schedules[0].id}`);
         const appointments = appointmentsResponse.data;
 
-        // Prepare to fetch schedule and course details for each appointment
-        const detailedAppointments = await Promise.all(appointments.map(async (appointment) => {
-            const scheduleResponse = await axios.get(`http://localhost:3000/schedules/${appointment.schedule_id}`);
-            const schedule = scheduleResponse.data[0];
-
-            const courseResponse = await axios.get(`http://localhost:3000/courses/${schedule.course_id}`);
-            const course = courseResponse.data[0];
-
-            return {
-                appointment,
-                schedule,
-                course
-            };
-        }));
-
-        // Send the combined schedule response
-        res.json(detailedAppointments);
-
-    } catch (err) {
-        console.error('Error fetching student schedule:', err.message);
-        res.status(500).json({ error: err.message });
+        res.json({ schedules, appointments });
+    } 
+    catch (error) {
+        res.status(500).json({ error: error.message });
     }
 });
 
-module.exports = router;
+compositeRouter.post('/createScheduleWithAppointments', async (req, res) => {
+    try {
+        const scheduleResponse = await axios.post(SCHEDULE_SERVICE_URL, req.body.schedule);
+        const newSchedule = scheduleResponse.data;
+
+        const appointments = req.body.appointments.map(appointment => ({
+            ...appointment,
+            scheduleId: newSchedule.id,
+        }));
+        const appointmentsResponse = await axios.post(APPOINTMENT_SERVICE_URL, { appointments });
+        
+        res.status(201).json({ schedule: newSchedule, appointments: appointmentsResponse.data });
+    } 
+    catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+compositeRouter.put('/updateScheduleWithAppointments/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const scheduleResponse = await axios.put(`${SCHEDULE_SERVICE_URL}/${id}`, req.body.schedule);
+        const updatedSchedule = scheduleResponse.data;
+
+        const appointments = req.body.appointments.map(appointment => ({
+            ...appointment,
+            scheduleId: id,
+        }));
+        const appointmentsResponse = await axios.put(`${APPOINTMENT_SERVICE_URL}/bulkUpdate`, { appointments });
+
+        res.json({ updatedSchedule, updatedAppointments: appointmentsResponse.data });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+compositeRouter.delete('/user/:userId', async (req, res) => {
+    const { userId } = req.params;
+    try {
+        const [deleteSchedules, deleteAppointments] = await Promise.all([
+            axios.delete(`${SCHEDULE_SERVICE_URL}/users/${userId}`),
+            axios.delete(`${APPOINTMENT_SERVICE_URL}/users/${userId}`),
+        ]);
+
+        res.json({
+            message: `User ${userId}'s schedules and appointments deleted.`,
+            deleteSchedules: deleteSchedules.data,
+            deleteAppointments: deleteAppointments.data,
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+module.exports = compositeRouter;
