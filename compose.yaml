@@ -1,0 +1,22 @@
+version: '3.8'
+services:
+  composite-service:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      # Schedule & Appointment Service
+      - SCHEDULE_SERVICE_URL=http://44.223.182.119/schedules
+      - APPOINTMENT_SERVICE_URL=http://44.223.182.119/appointments
+      # Course & Section Service
+      - COURSE_SERVICE_URL=http://52.202.78.156/courses
+      - SECTION_SERVICE_URL=http://52.202.78.156/sections
+      # User Section Service
+      - USER_SECTION_SERVICE_URL=http://54.243.137.132/user-sections
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped

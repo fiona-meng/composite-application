@@ -2,11 +2,22 @@ const express = require('express');
 const axios = require('axios');
 const compositeRouter = express.Router();
 
-const APPOINTMENT_SERVICE_URL = 'http://localhost:3001/appointments';
-const SCHEDULE_SERVICE_URL = 'http://localhost:3001/schedules';
-const COURSE_SERVICE_URL = 'http://localhost:3003/courses';
-const SECTION_SERVICE_URL = 'http://localhost:3003/sections';
-const USER_SECTION_SERVICE_URL = 'http://localhost:3004/user-sections';
+// const APPOINTMENT_SERVICE_URL = 'http://localhost:3001/appointments';
+// const SCHEDULE_SERVICE_URL = 'http://localhost:3001/schedules';
+// const COURSE_SERVICE_URL = 'http://localhost:3003/courses';
+// const SECTION_SERVICE_URL = 'http://localhost:3003/sections';
+// const USER_SECTION_SERVICE_URL = 'http://localhost:3004/user-sections';
+
+// Schedule & Appointment Service (EC2: http://44.223.182.119/)
+const APPOINTMENT_SERVICE_URL = 'http://44.223.182.119/appointments';
+const SCHEDULE_SERVICE_URL = 'http://44.223.182.119/schedules';
+
+// Course & Section Service (EC2: http://52.202.78.156/)
+const COURSE_SERVICE_URL = 'http://52.202.78.156/courses';
+const SECTION_SERVICE_URL = 'http://52.202.78.156/sections';
+
+// User Section Service (EC2: http://54.243.137.132/)
+const USER_SECTION_SERVICE_URL = 'http://54.243.137.132/user-sections';
 
 compositeRouter.get('/scheduleWithAppointments/userId/:userId', async (req, res) => {
     try {

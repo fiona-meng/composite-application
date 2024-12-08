@@ -7,6 +7,11 @@ const compositeService = require('./services/compositeService');
 app.use(express.json());
 app.use(cors());
 
+// Add root route handler
+app.get('/', (req, res) => {
+    res.json({ message: 'Welcome to the Composite API' });
+});
+
 // Define specific base routes for each service
 app.use('/composite', compositeService);
 
@@ -15,6 +20,7 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Internal Server Error' });
 });
 
-app.listen(process.env.PORT, () => {
-    console.log(`Composite server started on port ${process.env.PORT}`);
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on http://0.0.0.0:${PORT}`);
 });
